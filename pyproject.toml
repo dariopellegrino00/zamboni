@@ -1,0 +1,29 @@
+[project]
+name = "zamboni"
+version = "0.1.0"
+description = "PG-1 Robots on Ice: policy-gradient control of a Zamboni (Reinforcement Learning course project)"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "gymnasium>=1.0",
+    "matplotlib>=3.11.2",
+    "numpy>=1.26",
+]
+
+[dependency-groups]
+dev = [
+    "jupyter>=1.1.1",
+    "pytest>=8.0",
+    "ruff>=0.17.0",
+]
+# remember to generate requirements. when bumpin
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
