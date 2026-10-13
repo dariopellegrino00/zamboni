@@ -36,6 +36,17 @@ defines where targets appear, and the robot may leave it.
 `steps_left` counts the steps left in the current window. The timer is
 needed for the Markov property, since the target changes at a fixed time.
 
+## The policy
+
+A linear Gaussian policy, `pi(u|s) = N(u; 100 W phi_bar(s), sigma^2 I)`.
+`phi_bar(s)` is the state rescaled to order 1 (`features.py`) with a 1
+appended for the bias, and `W` is 2 × 8, one row per component of `u`.
+The parameters are `W` and `log sigma`, 17 numbers. The course treats
+sigma as a hyperparameter; here it is learned, as the generalization
+mentioned in pg1, through its log, which keeps it positive. `W` starts at
+zero, so the initial policy is pure noise; sigma starts at 30 N. The score
+`grad log pi(u|s)` is derived by hand.
+
 ## Usage
 With `uv`:
 ```bash
@@ -58,6 +69,6 @@ jupyter lab notebooks/           # open the notebooks
 
 | Path | Content |
 |---|---|
-| `src/zamboni/` | Where all the Enviroment and Algorithms code for the assignment will be implemented. Now is just the MDP: batched simulator and gymnasium environment |
+| `src/zamboni/` | Where all the Enviroment and Algorithms code for the assignment will be implemented. Now: the MDP (batched simulator and gymnasium environment), the features and the policy |
 | `notebooks/*` | Renders of the environment and, as the project grows, of the learned policies, with plots and discussion of the experiments. For now, the environment at its initial state. |
-| `tests/*` | Some additional checks on the MDP rules |
+| `tests/*` | Some additional checks on the MDP rules, the features, and the policy's density and score |
