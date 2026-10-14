@@ -1,0 +1,28 @@
+"""Policy gradient estimates from a batch of n trajectories (pg1)."""
+
+import numpy as np
+
+
+# x is the returns (n,) for reinforce or the rewards (T, n) for gpomdp
+def leave_one_out_mean(x: np.ndarray) -> np.ndarray:
+    """For each trajectory the mean of the other n - 1, along the last axis."""
+    n = x.shape[-1]
+    return (x.sum(axis=-1, keepdims=True) - x) / (n - 1)
+
+
+# scores (T, n, 17), rewards (T, n) and result: (17,)
+def reinforce(scores: np.ndarray, rewards: np.ndarray, baseline: bool = False) -> np.ndarray:
+    """Mean over the batch of (sum_t grad log pi) (R(tau) - b)."""
+    returns = rewards.sum(axis=0)
+    if baseline:
+        returns = returns - leave_one_out_mean(returns)
+    return (scores.sum(axis=0) * returns[:, None]).mean(axis=0)
+
+
+# scores (T, n, 17), rewards (T, n) and result: (17,)
+def gpomdp(scores: np.ndarray, rewards: np.ndarray, baseline: bool = False) -> np.ndarray:
+    """Mean over the batch of sum_t (r_t - b_t) sum_{h<=t} grad log pi(A_h|S_h)."""
+    if baseline:
+        rewards = rewards - leave_one_out_mean(rewards)
+    past_scores = np.cumsum(scores, axis=0)  # at each t the scores summed from 0 to t
+    return (rewards[..., None] * past_scores).sum(axis=0).mean(axis=0)

@@ -42,10 +42,23 @@ A linear Gaussian policy, `pi(u|s) = N(u; 100 W phi_bar(s), sigma^2 I)`.
 `phi_bar(s)` is the state rescaled to order 1 (`features.py`) with a 1
 appended for the bias, and `W` is 2 × 8, one row per component of `u`.
 The parameters are `W` and `log sigma`, 17 numbers. The course treats
-sigma as a hyperparameter; here it is learned, as the generalization
-mentioned in pg1, through its log, which keeps it positive. `W` starts at
-zero, so the initial policy is pure noise; sigma starts at 30 N. The score
+sigma as a hyperparameter. Here it is learned as pg1 allows, and the
+parameter is its log so that sigma stays positive. `W` starts at zero, so
+the initial policy is pure noise, and sigma starts at 30 N. The score
 `grad log pi(u|s)` is derived by hand.
+
+## Training
+
+Gradient ascent on the expected return. Each
+iteration plays a batch of n episodes with the current policy and estimates
+the gradient with GPOMDP, or with REINFORCE if chosen. Both can use a
+leave-one-out baseline: each episode is compared with the average of the
+other n - 1 (their returns for REINFORCE, their rewards at the same step for
+GPOMDP), which does not depend on the episode itself and so adds no bias.
+Adam updates the parameters with a step size that decreases linearly to
+zero. There is no discount, since the horizon is finite. The first training
+(`notebooks/training.ipynb`) uses n = 100, K = 1000 iterations and
+lr = 0.001.
 
 ## Usage
 With `uv`:
@@ -69,6 +82,6 @@ jupyter lab notebooks/           # open the notebooks
 
 | Path | Content |
 |---|---|
-| `src/zamboni/` | Where all the Enviroment and Algorithms code for the assignment will be implemented. Now: the MDP (batched simulator and gymnasium environment), the features and the policy |
-| `notebooks/*` | Renders of the environment and, as the project grows, of the learned policies, with plots and discussion of the experiments. For now, the environment at its initial state. |
-| `tests/*` | Some additional checks on the MDP rules, the features, and the policy's density and score |
+| `src/zamboni/` | Where all the Enviroment and Algorithms code for the assignment will be implemented. Now: the MDP (batched simulator and gymnasium environment), the features, the policy, the gradient estimators and the training |
+| `notebooks/*` | Renders of the environment and, as the project grows, of the learned policies, with plots and discussion of the experiments. For now, the environment at its initial state and the first training. |
+| `tests/*` | Some additional checks on the MDP rules, the features, the policy's density and score, the estimators, the rollout and Adam |
