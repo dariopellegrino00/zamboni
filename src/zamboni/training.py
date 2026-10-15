@@ -8,7 +8,8 @@ from .env import EPISODE_STEPS, ZamboniBatch
 from .estimators import gpomdp, reinforce
 from .policy import LinearGaussianPolicy, phi_bar
 
-EVAL_SEED = 2026
+TEST_SEED = 2026  # episodes for the reported results
+VALIDATION_SEED = 2025  # episodes to choose the hyperparameters
 EVAL_EPISODES = 1000
 
 
@@ -57,9 +58,10 @@ class Adam:
 class Config:
     mass: float = 75.0
     energy_coeff: float = 0.5
-    batch_size: int = 100  # n
-    iterations: int = 1000  # K
-    lr: float = 0.001  # the Adam default, decreasing linearly to 0
+    # n, K and lr chosen by the tuning on validation episodes (experiments/run.py)
+    batch_size: int = 50  # n
+    iterations: int = 2000  # K
+    lr: float = 0.01  # initial step size of Adam, decreasing linearly to 0
     sigma0: float = 30.0
     estimator: str = "gpomdp"  # or "reinforce"
     baseline: bool = True
@@ -98,10 +100,10 @@ def train(cfg: Config) -> tuple[LinearGaussianPolicy, dict]:
     return policy, {key: np.array(value) for key, value in history.items()}
 
 
-def evaluate(act, mass: float, energy_coeff: float) -> dict:
-    """Average return and targets reached of act on the same fixed test episodes."""
+def evaluate(act, mass: float, energy_coeff: float, seed: int = TEST_SEED) -> dict:
+    """Average return and targets reached of act on fixed episodes, by default the test set."""
     sim = ZamboniBatch(EVAL_EPISODES, mass, energy_coeff)
-    batch = rollout(sim, act, np.random.default_rng(EVAL_SEED))
+    batch = rollout(sim, act, np.random.default_rng(seed))
     return {
         "return": batch.rewards.sum(axis=0).mean(),
         "targets_reached": batch.targets_reached.mean(),

@@ -56,9 +56,12 @@ leave-one-out baseline: each episode is compared with the average of the
 other n - 1 (their returns for REINFORCE, their rewards at the same step for
 GPOMDP), which does not depend on the episode itself and so adds no bias.
 Adam updates the parameters with a step size that decreases linearly to
-zero. There is no discount, since the horizon is finite. The first training
-(`notebooks/training.ipynb`) uses n = 100, K = 1000 iterations and
-lr = 0.001.
+zero. There is no discount, since the horizon is finite.
+
+The batch size n and the initial step size lr are chosen by a tuning with
+the same budget of 100 000 training episodes per run: n = 50, K = 2000
+iterations and lr = 0.01. The first guess (n = 100, K = 1000, lr = 0.001)
+learned too slowly. Both trainings are in `notebooks/training.ipynb`.
 
 ## Reference controllers
 
@@ -69,6 +72,20 @@ has the gains of the LQR, computed from the dynamics and the cost with the
 Riccati recursion. The LQR ignores the 100 N limit and the
 target changes, so it is a reference and not the optimum of the task. Both
 are linear policies of the class above.
+
+## Experiments
+
+`experiments/run.py` runs the trainings of an experiment in parallel and
+saves each run in `results/<experiment>/`, so `notebooks/experiments.ipynb`
+reads them without training again:
+
+```bash
+uv run python experiments/run.py tuning  # skips the runs already saved
+```
+
+The hyperparameters are chosen on 1000 validation episodes. All the other
+results are on 1000 different test episodes, so they do not benefit from
+the choice.
 
 ## Usage
 With `uv`:
@@ -93,5 +110,7 @@ jupyter lab notebooks/           # open the notebooks
 | Path | Content |
 |---|---|
 | `src/zamboni/` | Where all the Enviroment and Algorithms code for the assignment will be implemented. Now: the MDP (batched simulator and gymnasium environment), the features, the policy, the gradient estimators, the training and the reference controllers |
-| `notebooks/*` | Renders of the environment and, as the project grows, of the learned policies, with plots and discussion of the experiments. For now, the environment at its initial state and the first training. |
+| `notebooks/*` | Renders of the environment and, as the project grows, of the learned policies, with plots and discussion of the experiments. For now, the environment at its initial state, the training and the tuning. |
+| `experiments/` | The script that runs the experiments |
+| `results/` | One file per training run: configuration, learning curves, final parameters and evaluation |
 | `tests/*` | Some additional checks on the MDP rules, the features, the policy's density and score, the estimators, the rollout, Adam and the LQR gains |
