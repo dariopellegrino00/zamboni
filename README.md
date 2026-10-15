@@ -60,6 +60,16 @@ zero. There is no discount, since the horizon is finite. The first training
 (`notebooks/training.ipynb`) uses n = 100, K = 1000 iterations and
 lr = 0.001.
 
+## Reference controllers
+
+Two PD controllers `u = kp (target - x) - kd v` are the comparison for the
+learned policy, on the same test episodes, all without noise. The first is critically
+damped, with kp = 10 N/m chosen by hand and `kd = 2 sqrt(kp m)`. The second
+has the gains of the LQR, computed from the dynamics and the cost with the
+Riccati recursion. The LQR ignores the 100 N limit and the
+target changes, so it is a reference and not the optimum of the task. Both
+are linear policies of the class above.
+
 ## Usage
 With `uv`:
 ```bash
@@ -82,6 +92,6 @@ jupyter lab notebooks/           # open the notebooks
 
 | Path | Content |
 |---|---|
-| `src/zamboni/` | Where all the Enviroment and Algorithms code for the assignment will be implemented. Now: the MDP (batched simulator and gymnasium environment), the features, the policy, the gradient estimators and the training |
+| `src/zamboni/` | Where all the Enviroment and Algorithms code for the assignment will be implemented. Now: the MDP (batched simulator and gymnasium environment), the features, the policy, the gradient estimators, the training and the reference controllers |
 | `notebooks/*` | Renders of the environment and, as the project grows, of the learned policies, with plots and discussion of the experiments. For now, the environment at its initial state and the first training. |
-| `tests/*` | Some additional checks on the MDP rules, the features, the policy's density and score, the estimators, the rollout and Adam |
+| `tests/*` | Some additional checks on the MDP rules, the features, the policy's density and score, the estimators, the rollout, Adam and the LQR gains |
