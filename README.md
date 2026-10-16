@@ -80,7 +80,7 @@ saves each run in `results/<experiment>/`, so `notebooks/experiments.ipynb`
 reads them without training again:
 
 ```bash
-uv run python experiments/run.py tuning estimators grid sigma  # skips the runs already saved
+uv run python experiments/run.py tuning estimators grid sigma convergence  # skips saved runs
 uv run python experiments/variance.py
 ```
 
@@ -98,7 +98,29 @@ the choice. The experiments, with their tables and plots:
   {50, 75, 100} kg and C in {0.1, 0.5, 0.9}, 5 seeds. The learned policy
   beats both PD controllers in every pair, while reaching fewer targets;
 - **σ fixed or learned**: learning σ matches the best fixed values (20 and
-  30 N) and beats 10 N, without having to choose it.
+  30 N) and beats 10 N, without having to choose it;
+- **convergence**: twice the training budget gives the same return.
+
+## Why the learned policy beats the LQR
+
+`notebooks/analysis.ipynb` reads the learned policies as gains. They are
+much softer than the LQR's (kp about 4 N/m against 10 to 30), weakly
+damped (damping ratio about 0.2 against 0.72), and add a pull towards the
+center of the rink that the LQR does not have. The LQR stops on each
+target, 18 m from the center on average when the window ends; the learned
+policy swings past the target and back, and is 10 m from the center. A new
+target is uniform on the rink, so its expected squared distance is 377 m²
+from the center against 780 m² from 20 m away: being closer to the center
+makes the next window cheaper.
+
+A direct test measures how much this explains: adding the learned pull
+towards the center (1.8 N/m) to the LQR improves it from −81.6 to −75.0
+thousand, about half of the gap to the learned policy (−67.0 thousand).
+The rest is most likely in the gains: the LQR is computed without the
+100 N limit and saturates in 13% of the steps, the learned policy, trained
+with the limit, in about 4%. The price is fewer targets reached (2.19 of 3
+against 3), and that count depends on the 2 m radius (0.9 targets with
+0.5 m, 2.9 with 5 m), so the return is the comparison that counts.
 
 ## Usage
 With `uv`:
@@ -123,7 +145,7 @@ jupyter lab notebooks/           # open the notebooks
 | Path | Content |
 |---|---|
 | `src/zamboni/` | Where all the Enviroment and Algorithms code for the assignment will be implemented. Now: the MDP (batched simulator and gymnasium environment), the features, the policy, the gradient estimators, the training and the reference controllers |
-| `notebooks/*` | Renders of the environment and, as the project grows, of the learned policies, with plots and discussion of the experiments. For now, the environment at its initial state, the training and the experiments. |
+| `notebooks/*` | Renders of the environment and, as the project grows, of the learned policies, with plots and discussion of the experiments. For now, the environment at its initial state, the training, the experiments and the analysis of the learned controller. |
 | `experiments/` | The scripts that run the experiments |
 | `results/` | One file per training run: configuration, learning curves, final parameters and evaluation |
 | `tests/*` | Some additional checks on the MDP rules, the features, the policy's density and score, the estimators, the rollout, Adam and the LQR gains |

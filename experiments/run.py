@@ -44,7 +44,18 @@ def sigma():
         yield Config(seed=seed)  # learned, from 30 N
 
 
-EXPERIMENTS = {"tuning": tuning, "estimators": estimators, "grid": grid, "sigma": sigma}
+def convergence():
+    for seed in range(5):
+        yield Config(iterations=2 * Config.iterations, seed=seed)  # twice the budget, 200k episodes
+
+
+EXPERIMENTS = {
+    "tuning": tuning,
+    "estimators": estimators,
+    "grid": grid,
+    "sigma": sigma,
+    "convergence": convergence,
+}
 
 
 def run_name(cfg: Config) -> str:
@@ -53,9 +64,10 @@ def run_name(cfg: Config) -> str:
         sigma = f"_sigma{cfg.sigma0:g}fixed"
     else:
         sigma = "" if cfg.sigma0 == Config.sigma0 else f"_sigma{cfg.sigma0:g}"
+    budget = "" if cfg.batch_size * cfg.iterations == BUDGET else f"_K{cfg.iterations}"
     return (
         f"{estimator}_m{cfg.mass:g}_C{cfg.energy_coeff:g}"
-        f"_n{cfg.batch_size}_lr{cfg.lr:g}{sigma}_s{cfg.seed}"
+        f"_n{cfg.batch_size}{budget}_lr{cfg.lr:g}{sigma}_s{cfg.seed}"
     )
 
 

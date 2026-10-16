@@ -44,11 +44,14 @@ def main() -> None:
             scores = policy.score(phi_bar(batch.states), batch.actions)
             for name, (estimate, baseline) in ESTIMATORS.items():
                 terms[name].append(estimate(scores, batch.rewards, baseline=baseline))
-        variance = {name: np.concatenate(t).var(axis=0, ddof=1) for name, t in terms.items()}
+        variance = {}
+        for name, batches in terms.items():
+            all_terms = np.concatenate(batches)  # (4000, 17): one row per trajectory
+            variance[name] = all_terms.var(axis=0, ddof=1)  # (17,): one variance per parameter
         row = {"iteration": k, "sigma": policy.sigma}
-        for name, var in variance.items():
-            # geometric mean over the 17 parameters of the variance relative to REINFORCE
-            row[name] = float(np.exp(np.mean(np.log(var / variance["REINFORCE"]))))
+        for name in ESTIMATORS:
+            ratios = variance[name] / variance["REINFORCE"]  # (17,): relative to REINFORCE
+            row[name] = float(np.exp(np.mean(np.log(ratios))))  # geometric mean of the 17 ratios
         rows.append(row)
         print(row)
     (RESULTS / "variance.json").write_text(json.dumps(rows, indent=1) + "\n")
