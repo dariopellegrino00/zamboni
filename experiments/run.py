@@ -25,14 +25,37 @@ def tuning():
         yield Config(batch_size=n, iterations=BUDGET // n, lr=lr, seed=seed)
 
 
-EXPERIMENTS = {"tuning": tuning}
+def estimators():
+    for estimator, baseline, seed in itertools.product(
+        ("reinforce", "gpomdp"), (False, True), range(5)
+    ):
+        yield Config(estimator=estimator, baseline=baseline, seed=seed)
+
+
+def grid():
+    for mass, energy_coeff, seed in itertools.product((50, 75, 100), (0.1, 0.5, 0.9), range(5)):
+        yield Config(mass=mass, energy_coeff=energy_coeff, seed=seed)
+
+
+def sigma():
+    for sigma0, seed in itertools.product((10.0, 20.0, 30.0), range(3)):
+        yield Config(sigma0=sigma0, learn_sigma=False, seed=seed)
+    for seed in range(3):
+        yield Config(seed=seed)  # learned, from 30 N
+
+
+EXPERIMENTS = {"tuning": tuning, "estimators": estimators, "grid": grid, "sigma": sigma}
 
 
 def run_name(cfg: Config) -> str:
     estimator = cfg.estimator + ("_baseline" if cfg.baseline else "")
+    if not cfg.learn_sigma:
+        sigma = f"_sigma{cfg.sigma0:g}fixed"
+    else:
+        sigma = "" if cfg.sigma0 == Config.sigma0 else f"_sigma{cfg.sigma0:g}"
     return (
         f"{estimator}_m{cfg.mass:g}_C{cfg.energy_coeff:g}"
-        f"_n{cfg.batch_size}_lr{cfg.lr:g}_s{cfg.seed}"
+        f"_n{cfg.batch_size}_lr{cfg.lr:g}{sigma}_s{cfg.seed}"
     )
 
 
@@ -45,7 +68,7 @@ def run(cfg: Config, path: Path) -> str:
         tmp,
         config=json.dumps(asdict(cfg)),
         final_theta=policy.theta,
-        **{key: value.astype(np.float32) for key, value in history.items() if key != "theta"},
+        **{key: value.astype(np.float32) for key, value in history.items()},
         **{f"validation_{key}": value for key, value in validation.items()},
         **{f"test_{key}": value for key, value in test.items()},
     )

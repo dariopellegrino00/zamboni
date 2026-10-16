@@ -63,6 +63,7 @@ class Config:
     iterations: int = 2000  # K
     lr: float = 0.01  # initial step size of Adam, decreasing linearly to 0
     sigma0: float = 30.0
+    learn_sigma: bool = True  # if False sigma stays at sigma0
     estimator: str = "gpomdp"  # or "reinforce"
     baseline: bool = True
     seed: int = 0
@@ -85,7 +86,9 @@ def train(cfg: Config) -> tuple[LinearGaussianPolicy, dict]:
     for k in range(cfg.iterations):
         batch = rollout(sim, explore, env_rng)
         scores = policy.score(phi_bar(batch.states), batch.actions)
-        grad = estimate(scores, batch.rewards, baseline=cfg.baseline)
+        grad = estimate(scores, batch.rewards, baseline=cfg.baseline).mean(axis=0)
+        if not cfg.learn_sigma:
+            grad[-1] = 0.0  # Adam then never moves log sigma
 
         # the average return of the batch estimates J(theta_k)
         history["return"].append(batch.rewards.sum(axis=0).mean())

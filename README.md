@@ -80,12 +80,25 @@ saves each run in `results/<experiment>/`, so `notebooks/experiments.ipynb`
 reads them without training again:
 
 ```bash
-uv run python experiments/run.py tuning  # skips the runs already saved
+uv run python experiments/run.py tuning estimators grid sigma  # skips the runs already saved
+uv run python experiments/variance.py
 ```
 
 The hyperparameters are chosen on 1000 validation episodes. All the other
 results are on 1000 different test episodes, so they do not benefit from
-the choice.
+the choice. The experiments, with their tables and plots:
+
+- **tuning** of n and lr, 3 seeds per pair;
+- **estimators**: REINFORCE and GPOMDP, with and without baseline, 5 seeds.
+  GPOMDP with its baseline is the best (−67.0 ± 0.4 thousand at m = 75 kg,
+  C = 0.5) and REINFORCE without baseline the worst (−102 ± 20 thousand);
+- **variance** of the four estimators at fixed parameters: GPOMDP with its
+  baseline has 4 to 19 times less variance than REINFORCE;
+- **mass and energy cost** (the comparison asked by the assignment): m in
+  {50, 75, 100} kg and C in {0.1, 0.5, 0.9}, 5 seeds. The learned policy
+  beats both PD controllers in every pair, while reaching fewer targets;
+- **σ fixed or learned**: learning σ matches the best fixed values (20 and
+  30 N) and beats 10 N, without having to choose it.
 
 ## Usage
 With `uv`:
@@ -110,7 +123,7 @@ jupyter lab notebooks/           # open the notebooks
 | Path | Content |
 |---|---|
 | `src/zamboni/` | Where all the Enviroment and Algorithms code for the assignment will be implemented. Now: the MDP (batched simulator and gymnasium environment), the features, the policy, the gradient estimators, the training and the reference controllers |
-| `notebooks/*` | Renders of the environment and, as the project grows, of the learned policies, with plots and discussion of the experiments. For now, the environment at its initial state, the training and the tuning. |
-| `experiments/` | The script that runs the experiments |
+| `notebooks/*` | Renders of the environment and, as the project grows, of the learned policies, with plots and discussion of the experiments. For now, the environment at its initial state, the training and the experiments. |
+| `experiments/` | The scripts that run the experiments |
 | `results/` | One file per training run: configuration, learning curves, final parameters and evaluation |
 | `tests/*` | Some additional checks on the MDP rules, the features, the policy's density and score, the estimators, the rollout, Adam and the LQR gains |

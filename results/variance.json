@@ -1,0 +1,34 @@
+[
+ {
+  "iteration": 0,
+  "sigma": 30.00000155428577,
+  "REINFORCE": 1.0,
+  "REINFORCE + baseline": 0.3777140349268411,
+  "GPOMDP": 0.4806871540654554,
+  "GPOMDP + baseline": 0.22066069510032676
+ },
+ {
+  "iteration": 100,
+  "sigma": 25.46626199127198,
+  "REINFORCE": 1.0,
+  "REINFORCE + baseline": 0.24645759422276892,
+  "GPOMDP": 0.27010730431386243,
+  "GPOMDP + baseline": 0.08164956564276174
+ },
+ {
+  "iteration": 500,
+  "sigma": 27.210766142355244,
+  "REINFORCE": 1.0,
+  "REINFORCE + baseline": 0.1679331030707046,
+  "GPOMDP": 0.27133227506153956,
+  "GPOMDP + baseline": 0.05380801570315357
+ },
+ {
+  "iteration": 1999,
+  "sigma": 22.640352215253298,
+  "REINFORCE": 1.0,
+  "REINFORCE + baseline": 0.19463424209392777,
+  "GPOMDP": 0.2881708683194103,
+  "GPOMDP + baseline": 0.07353059025630447
+ }
+]
