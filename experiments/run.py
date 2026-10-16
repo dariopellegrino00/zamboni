@@ -49,12 +49,24 @@ def convergence():
         yield Config(iterations=2 * Config.iterations, seed=seed)  # twice the budget, 200k episodes
 
 
+def friction():
+    for b, seed in itertools.product((0.01, 0.1), range(5)):
+        yield Config(friction=b, seed=seed)
+
+
+def relative_targets():
+    for iterations, seed in itertools.product((Config.iterations, 2 * Config.iterations), range(5)):
+        yield Config(target_sampling="relative", iterations=iterations, seed=seed)
+
+
 EXPERIMENTS = {
     "tuning": tuning,
     "estimators": estimators,
     "grid": grid,
     "sigma": sigma,
     "convergence": convergence,
+    "friction": friction,
+    "relative_targets": relative_targets,
 }
 
 
@@ -65,16 +77,19 @@ def run_name(cfg: Config) -> str:
     else:
         sigma = "" if cfg.sigma0 == Config.sigma0 else f"_sigma{cfg.sigma0:g}"
     budget = "" if cfg.batch_size * cfg.iterations == BUDGET else f"_K{cfg.iterations}"
+    friction = f"_b{cfg.friction:g}" if cfg.friction else ""
+    targets = "_relative" if cfg.target_sampling == "relative" else ""
     return (
-        f"{estimator}_m{cfg.mass:g}_C{cfg.energy_coeff:g}"
+        f"{estimator}_m{cfg.mass:g}_C{cfg.energy_coeff:g}{friction}{targets}"
         f"_n{cfg.batch_size}{budget}_lr{cfg.lr:g}{sigma}_s{cfg.seed}"
     )
 
 
 def run(cfg: Config, path: Path) -> str:
     policy, history = train(cfg)
-    validation = evaluate(policy.act, cfg.mass, cfg.energy_coeff, seed=VALIDATION_SEED)
-    test = evaluate(policy.act, cfg.mass, cfg.energy_coeff, seed=TEST_SEED)
+    env = (cfg.mass, cfg.energy_coeff, cfg.friction, cfg.target_sampling)
+    validation = evaluate(policy.act, *env, seed=VALIDATION_SEED)
+    test = evaluate(policy.act, *env, seed=TEST_SEED)
     tmp = path.with_suffix(".tmp.npz")
     np.savez(
         tmp,

@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from zamboni.controllers import PDController, lqr_gains
 from zamboni.env import DT
@@ -9,21 +10,22 @@ OBS = np.array(
 )
 
 
-def axis_cost(kp, kd, mass=75.0, energy_coeff=0.5, steps=3000):
+def axis_cost(kp, kd, mass=75.0, energy_coeff=0.5, friction=0.0, steps=3000):
     """Cost of one axis without saturation, from 10 m away and at rest."""
     e, v, cost = 10.0, 0.0, 0.0
     for _ in range(steps):
         force = -kp * e - kd * v
         cost += e**2 + (energy_coeff / 100) * force**2
-        e, v = e + DT * v, v + DT * force / mass
+        e, v = e + DT * v, v + DT * (force / mass - friction * v)
     return cost
 
 
-def test_lqr_gains_minimize_the_cost():
-    kp, kd = lqr_gains(75.0, 0.5)
-    best = axis_cost(kp, kd)
+@pytest.mark.parametrize("friction", [0.0, 0.1])
+def test_lqr_gains_minimize_the_cost(friction):
+    kp, kd = lqr_gains(75.0, 0.5, friction)
+    best = axis_cost(kp, kd, friction=friction)
     for dkp, dkd in [(1.05, 1), (0.95, 1), (1, 1.05), (1, 0.95)]:
-        assert axis_cost(kp * dkp, kd * dkd) > best
+        assert axis_cost(kp * dkp, kd * dkd, friction=friction) > best
 
 
 def test_a_pd_is_a_linear_policy():

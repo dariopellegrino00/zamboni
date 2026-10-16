@@ -22,7 +22,7 @@ class Rollout:
 
 
 def rollout(sim: ZamboniBatch, act, rng: np.random.Generator) -> Rollout:
-    """Plays sim.n episodes in parallel with u_t = act(S_t); rng draws the targets."""
+    """Plays sim.n episodes in parallel with u_t = act(S_t), and rng draws the targets."""
     obs = sim.reset(rng)
     T, n = EPISODE_STEPS, sim.n
     states = np.empty((T, n, obs.shape[1]))
@@ -58,6 +58,8 @@ class Adam:
 class Config:
     mass: float = 75.0
     energy_coeff: float = 0.5
+    friction: float = 0.0
+    target_sampling: str = "absolute"  # or "relative"
     # n, K and lr chosen by the tuning on validation episodes (experiments/run.py)
     batch_size: int = 50  # n
     iterations: int = 2000  # K
@@ -74,7 +76,9 @@ def train(cfg: Config) -> tuple[LinearGaussianPolicy, dict]:
     # one random stream for the targets and one for the policy noise
     env_seed, noise_seed = np.random.SeedSequence(cfg.seed).spawn(2)
     env_rng, noise_rng = np.random.default_rng(env_seed), np.random.default_rng(noise_seed)
-    sim = ZamboniBatch(cfg.batch_size, cfg.mass, cfg.energy_coeff)
+    sim = ZamboniBatch(
+        cfg.batch_size, cfg.mass, cfg.energy_coeff, cfg.friction, cfg.target_sampling
+    )
     policy = LinearGaussianPolicy(cfg.sigma0)
     adam = Adam(policy.theta.size)
     estimate = {"reinforce": reinforce, "gpomdp": gpomdp}[cfg.estimator]
@@ -103,9 +107,16 @@ def train(cfg: Config) -> tuple[LinearGaussianPolicy, dict]:
     return policy, {key: np.array(value) for key, value in history.items()}
 
 
-def evaluate(act, mass: float, energy_coeff: float, seed: int = TEST_SEED) -> dict:
+def evaluate(
+    act,
+    mass: float,
+    energy_coeff: float,
+    friction: float = 0.0,
+    target_sampling: str = "absolute",
+    seed: int = TEST_SEED,
+) -> dict:
     """Average return and targets reached of act on fixed episodes, by default the test set."""
-    sim = ZamboniBatch(EVAL_EPISODES, mass, energy_coeff)
+    sim = ZamboniBatch(EVAL_EPISODES, mass, energy_coeff, friction, target_sampling)
     batch = rollout(sim, act, np.random.default_rng(seed))
     return {
         "return": batch.rewards.sum(axis=0).mean(),

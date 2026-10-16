@@ -5,9 +5,11 @@ import numpy as np
 from .env import DT
 
 
-def lqr_gains(mass: float, energy_coeff: float, tol: float = 1e-12) -> tuple[float, float]:
+def lqr_gains(
+    mass: float, energy_coeff: float, friction: float = 0.0, tol: float = 1e-12
+) -> tuple[float, float]:
     """kp and kd of the LQR for one axis, from the Riccati recursion."""
-    A = np.array([[1.0, DT], [0.0, 1.0]])  # s = [e, v] with e = x - target
+    A = np.array([[1.0, DT], [0.0, 1.0 - DT * friction]])  # s = [e, v] with e = x - target
     B = np.array([[0.0], [DT / mass]])
     Q = np.diag([1.0, 0.0])  # weight of the distance in the cost
     R = np.array([[energy_coeff / 100.0]])  # weight of the energy
@@ -33,8 +35,8 @@ class PDController:
         return cls(kp, 2.0 * np.sqrt(kp * mass))
 
     @classmethod
-    def lqr(cls, mass: float, energy_coeff: float) -> "PDController":
-        return cls(*lqr_gains(mass, energy_coeff))
+    def lqr(cls, mass: float, energy_coeff: float, friction: float = 0.0) -> "PDController":
+        return cls(*lqr_gains(mass, energy_coeff, friction))
 
     def act(self, obs: np.ndarray) -> np.ndarray:
         pos, vel, target = obs[..., 0:2], obs[..., 2:4], obs[..., 4:6]

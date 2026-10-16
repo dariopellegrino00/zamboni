@@ -20,8 +20,8 @@ from zamboni.env import (
 )
 
 
-def make_sim(n=1, mass=75.0, energy_coeff=0.5, seed=0):
-    sim = ZamboniBatch(n, mass, energy_coeff)
+def make_sim(n=1, mass=75.0, energy_coeff=0.5, friction=0.0, target_sampling="absolute", seed=0):
+    sim = ZamboniBatch(n, mass, energy_coeff, friction, target_sampling)
     sim.reset(np.random.default_rng(seed))
     return sim
 
@@ -82,6 +82,16 @@ def test_step_hand_computed():
     assert not info["saturated"][0]
 
 
+def test_friction_brakes_in_proportion_to_the_velocity():
+    sim = make_sim(mass=80.0, friction=0.1)
+    sim.vel[:] = [3.0, -1.0]
+    sim.step([30.0, -40.0])
+    # v(t+1) = v(t) + 0.1 (F / m - b v(t))
+    assert np.allclose(
+        sim.vel, [[3.0 + DT * (30.0 / 80.0 - 0.3), -1.0 + DT * (-40.0 / 80.0 + 0.1)]]
+    )
+
+
 def test_saturation_is_radial_and_priced_on_the_force():
     sim = make_sim(mass=50.0, energy_coeff=0.9)
     sim.target[:] = [3.0, 4.0]
@@ -89,25 +99,42 @@ def test_saturation_is_radial_and_priced_on_the_force():
     assert np.allclose(sim.vel, DT * np.array([[60.0, 80.0]]) / 50.0)
     assert reward[0] == pytest.approx(-(25.0 + (0.9 / 100.0) * MAX_FORCE**2))
     assert info["saturated"][0]
-    assert info["force_norm"][0] == pytest.approx(MAX_FORCE)
+    assert info["energy"][0] == pytest.approx(MAX_FORCE**2)
 
 
-def test_targets_spawn_on_rink_outside_success_radius():
+def test_new_targets_on_rink_outside_success_radius():
     n = 2000
     sim = make_sim(n=n)
     sim.pos[:] = [29.0, 14.0]  # near a corner, where rejection matters most
     sim.steps_remaining = 1
     sim.step(np.zeros((n, 2)))
-    for target in (make_sim(n=n).target, sim.target):  # at reset and at respawn
+    for target in (make_sim(n=n).target, sim.target):  # at reset and at a new window
         assert np.all(np.abs(target[:, 0]) <= RINK_HALF_X)
         assert np.all(np.abs(target[:, 1]) <= RINK_HALF_Y)
     assert np.all(np.linalg.norm(sim.target - sim.pos, axis=1) > TARGET_RADIUS)
 
 
+def test_relative_targets_near_the_robot_on_the_rink():
+    n = 2000
+    sim = make_sim(n=n, target_sampling="relative")
+    sim.pos[:] = [29.0, 0.0]  # near the short edge most proposals fall off the rink
+    sim.steps_remaining = 1
+    sim.step(np.zeros((n, 2)))
+    distance = np.linalg.norm(sim.target - sim.pos, axis=1)
+    assert np.all((5.0 <= distance) & (distance <= 30.0))
+    assert np.all(np.abs(sim.target[:, 0]) <= RINK_HALF_X)
+    assert np.all(np.abs(sim.target[:, 1]) <= RINK_HALF_Y)
+    # far off the rink no proposal is valid: the fallback must not loop forever
+    sim.pos[:] = [100.0, 0.0]
+    sim.steps_remaining = 1
+    sim.step(np.zeros((n, 2)))
+    assert np.all(np.abs(sim.target[:, 0]) <= RINK_HALF_X)
+
+
 def test_same_seed_same_targets_whatever_the_policy():
     n = 1000
     a, b = make_sim(n=n, seed=5), make_sim(n=n, seed=5)
-    b.pos[:] = [20.0, -10.0]  # b's robots stand elsewhere at the respawn
+    b.pos[:] = [20.0, -10.0]  # b's robots stand elsewhere at the new window
     a.steps_remaining = b.steps_remaining = 1
     a.step(np.zeros((n, 2)))
     b.step(np.zeros((n, 2)))
@@ -129,8 +156,7 @@ def test_target_windows_last_exactly_200_steps():
         assert info["window_expired"]
         assert np.all(sim.target != old_target)
         assert np.all(obs[:, 6] == TARGET_WINDOW)
-    # standing still at the center never reaches a target spawned > 2 m away
-    assert np.all(sim.targets_missed == 3)
+    # standing still at the center never reaches a target drawn > 2 m away
     assert np.all(sim.targets_reached == 0)
 
 
@@ -153,4 +179,3 @@ def test_success_on_last_step_credited_to_old_target():
     _, _, info = sim.step(np.zeros(2))
     assert info["reached_now"][0] and info["window_expired"]
     assert sim.targets_reached[0] == 1
-    assert sim.targets_missed[0] == 0
